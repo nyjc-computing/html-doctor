@@ -9,8 +9,9 @@ left, a live preview on the right, and real-time linting in between.
   unknown and HTML5-only tags, invalid attributes and attribute values,
   missing closing tags, closing tags on void elements (`</br>`), unclosed
   quotes, content in the wrong place, unterminated `<title>`/`<style>`, stray `&`.
-- **CSS checks** — unknown properties, invalid values, missing units, missing
-  `:`/`;`/`}` and declarations outside a rule.
+  Only HTML is checked for now — CSS checking arrives in a separate lesson.
+- If the preview would show nothing at all, a placeholder explains why instead
+  of leaving a blank frame.
 - Findings appear as wavy red/orange/blue underlines (error / warning / hint);
   putting the cursor on one — or picking it from the list below — opens a
   bottom pane with a plain-English explanation, the snippet and how to fix it.
