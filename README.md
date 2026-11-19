@@ -12,9 +12,9 @@ left, a live preview on the right, and real-time linting in between.
 - **CSS checks** — unknown properties, invalid values, missing units, missing
   `:`/`;`/`}` and declarations outside a rule.
 - Findings appear as wavy red/orange/blue underlines (error / warning / hint);
-  hovering or clicking one opens a bottom pane with a plain-English
-  explanation, the snippet and how to fix it. An ▲/▼ button collapses and
-  expands the pane.
+  putting the cursor on one — or picking it from the list below — opens a
+  bottom pane with a plain-English explanation, the snippet and how to fix it.
+  An ▲/▼ button collapses and expands the pane.
 
 Scope is **HTML 4** (the H2 Computing 9569 syllabus); HTML5-only tags get a
 warning, not an error. A missing `<!doctype html>` is an error (quirks mode).
