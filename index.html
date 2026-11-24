@@ -29,7 +29,9 @@ header#top{flex:0 0 auto;display:flex;align-items:center;gap:10px;
 #top h1{font-size:16px;margin:0;font-weight:650;letter-spacing:.01em}
 #top .sub{color:#9ca3af;font-weight:400;font-size:12.5px;margin-left:10px}
 #top-actions{margin-left:auto;display:flex;gap:8px;align-items:center}
-#help-btn{background:transparent;border-color:#374151;color:#e5e7eb}
+#help-btn,#share-btn{background:transparent;border-color:#374151;color:#e5e7eb}
+#help-btn:hover,#share-btn:hover{background:#1f2937}
+#share-btn:disabled{opacity:.45;cursor:not-allowed}
 
 main{flex:1;display:flex;min-height:0;min-width:0}
 .pane-head{flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:4px 12px;
@@ -51,6 +53,17 @@ main{flex:1;display:flex;min-height:0;min-width:0}
 #pv-empty[hidden]{display:none}
 .pane-head .note.stale{color:var(--warn);font-weight:600;animation:pulse 1.1s ease-in-out infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+#limit-note{color:var(--warn);font-weight:600}
+#limit-note:not([hidden]) ~ #pos{margin-left:10px}
+
+#link-note{flex:0 0 auto;display:flex;align-items:center;gap:12px;padding:5px 14px;font-size:12.5px;
+  background:var(--warnbg);color:#7d4e00;border-bottom:1px solid #e3c98a}
+#link-note.err{background:var(--errbg);color:#8a1c23;border-bottom-color:#f0b6ba}
+#link-note span{flex:1;min-width:0}
+#link-note button{flex:0 0 auto;border:0;background:transparent;font-size:15px;line-height:1;
+  padding:2px 6px;color:inherit}
+#link-note button:hover{background:rgba(0,0,0,.07)}
+#link-note[hidden]{display:none}
 
 #editor{flex:1;display:flex;min-height:0;position:relative}
 #gutter{flex:0 0 52px;position:relative;overflow:hidden;background:#fafbfc;
@@ -155,13 +168,19 @@ dialog#help th{background:#f2f4f7}
   <h1>HTML Doctor</h1>
   <span class="sub">type HTML on the left, see it live on the right — squiggly underlines show what the browser is quietly forgiving</span>
   <div id="top-actions">
-    <button id="help-btn" title="What does the Doctor check?">?</button>
+    <button id="share-btn" title="Copy a link that opens this page in the editor">Share link</button>
+    <button id="help-btn" title="What does the Doctor check?" aria-label="Help — what does the Doctor check?">?</button>
   </div>
 </header>
 
+<div id="link-note" hidden>
+  <span id="link-note-text"></span>
+  <button id="link-note-close" title="Dismiss" aria-label="Dismiss this notice">×</button>
+</div>
+
 <main>
   <section id="editor-pane">
-    <div class="pane-head">HTML <span class="note" id="pos">line 1, col 1</span></div>
+    <div class="pane-head">HTML <span class="note" id="limit-note" role="status" hidden></span><span class="note" id="pos">line 1, col 1</span></div>
     <div id="editor">
       <div id="gutter" title="Click a marked line to see its problem"><div id="gutter-in"></div></div>
       <div id="codebox">
@@ -174,7 +193,7 @@ dialog#help th{background:#f2f4f7}
   <div id="split" title="Drag to resize"></div>
   <section id="preview-pane">
     <div class="pane-head">Preview <span class="note" id="pv-note">updates as you type</span></div>
-    <iframe id="pv" sandbox="allow-scripts allow-forms allow-popups allow-modals" title="HTML preview"></iframe>
+    <iframe id="pv" sandbox="allow-scripts allow-forms allow-popups" title="HTML preview"></iframe>
     <div id="pv-empty" hidden>
       <b>The preview is blank.</b>
       <span>Fix the findings above (if any) and the page will show here.</span>
@@ -186,7 +205,7 @@ dialog#help th{background:#f2f4f7}
   <div id="panel-bar">
     <span id="counts"></span>
     <span id="hint">Move the cursor onto a squiggly underline (or click a marked line number) to see what's wrong.</span>
-    <button id="panel-toggle" title="Show details">▲</button>
+    <button id="panel-toggle" title="Show details" aria-label="Show details">▲</button>
   </div>
   <div id="panel-body">
     <ul id="err-list"></ul>
@@ -228,6 +247,9 @@ dialog#help th{background:#f2f4f7}
     <ul>
       <li><b>Tab</b> indents. <b>Esc</b> collapses this details pane — the ▲ button at the bottom-right brings it back.</li>
       <li>The preview re-renders automatically shortly after you stop typing — a small amber note tells you when it is momentarily out of date.</li>
+      <li>The preview shows <b>HTML and CSS only</b>. JavaScript is switched off inside it: <code>&lt;script&gt;</code> blocks,
+          <code>onclick</code>-style handlers and <code>javascript:</code> links do nothing, and <code>alert</code>/<code>confirm</code>/
+          <code>prompt</code> are unavailable — this is a HTML lesson.</li>
       <li>The page opens pre-filled with a buggy example on purpose: move the cursor onto the underlines to diagnose it. Correct examples: <code>?example=starter</code> and <code>?example=table</code> in the address.</li>
       <li>Only the HTML is checked for now — CSS checking arrives in a separate lesson.</li>
       <li>Only HTML 4 elements are in scope (that's the course syllabus). HTML5-only tags such as
@@ -235,6 +257,11 @@ dialog#help th{background:#f2f4f7}
       <li>Elements whose closing tag HTML 4 lets you omit (<code>&lt;li&gt;</code>, <code>&lt;p&gt;</code>,
           <code>&lt;td&gt;</code>…) are never flagged — but adding the closing tag makes the structure easier to see.</li>
       <li>Your code is saved in this browser automatically.</li>
+      <li><b>Share link</b> copies an address that opens the current page in the editor. The HTML travels
+          inside the link itself — nothing is uploaded. Pages up to 12,000 characters fit; the character
+          count appears in the editor's title bar only once you are over that limit.</li>
+      <li>A page opened from a shared link says so above the editor. Its preview shows HTML written by
+          someone else, so never type passwords or personal details into it.</li>
     </ul>
     <p style="text-align:right"><button onclick="document.getElementById('help').close()">Close</button></p>
   </div>
@@ -246,6 +273,7 @@ dialog#help th{background:#f2f4f7}
    HELPERS
    ============================================================ */
 const $ = s => document.querySelector(s);
+const utf8Bytes = s => new TextEncoder().encode(s);
 function escH(s){ return s.replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
 function trunc(s, n){ s = s.replace(/\s+/g,' ').trim(); return s.length > n ? s.slice(0, n-1) + '…' : s; }
 function lev(a, b){                       /* small Levenshtein for did-you-mean */
@@ -544,6 +572,9 @@ const ta = $('#code'), hl = $('#hl'), gutterIn = $('#gutter-in'), gutterEl = $('
 const pv = $('#pv'), pvNote = $('#pv-note'), panel = $('#panel'), panelToggle = $('#panel-toggle');
 const countsEl = $('#counts'), listEl = $('#err-list');
 const detailEl = $('#err-detail'), posEl = $('#pos'), hintEl = $('#hint');
+const shareBtn = $('#share-btn'), limitNote = $('#limit-note'), linkNote = $('#link-note');
+const MAX_HTML_CHARS = 12000;     /* longest page that fits a share link — and the editor's size limit */
+const MAX_LINK_CHARS  = 16384;    /* 16 KB */
 const LH = 22, PADT = 8, PADL = 12;
 let src = '', lines = [0];
 let tokens = [], tags = [], raws = [];
@@ -1801,6 +1832,7 @@ function setPanel(open){
   panel.classList.toggle('open', open);
   panelToggle.textContent = open ? '▼' : '▲';
   panelToggle.title = open ? 'Hide details' : 'Show details';
+  panelToggle.setAttribute('aria-label', open ? 'Hide details' : 'Show details');
   if (open) suppressId = null;
   else if (activeErr) suppressId = errors.indexOf(activeErr);   /* stay hidden while the cursor stays on it */
 }
@@ -1847,6 +1879,7 @@ function update(){
   renderGutter();
   renderCounts();
   renderList();
+  renderLimit();
   updateCaretDetail();
   scheduleRun();
 }
@@ -1854,12 +1887,18 @@ function scheduleRun(){
   clearTimeout(runTimer);
   pvNote.textContent = '● preview out of date';
   pvNote.classList.add('stale');
+  pvNote.setAttribute('data-stale', '1');
   runTimer = setTimeout(runPreview, 400);
 }
 function runPreview(){
+  /* a fresh nonce per render is what the guard below lets through — a page's
+     own scripts never see it, so they stay off no matter how they are written */
+  const nb = new Uint8Array(16);
+  crypto.getRandomValues(nb);
+  const nonce = btoa(String.fromCharCode.apply(null, nb));
   /* inject a tiny probe that reports whether the rendered document shows
      anything visible — the sandbox keeps the parent from reading the frame */
-  const boot = '<scr' + 'ipt>(function(){function rpt(){try{' +
+  const boot = '<scr' + 'ipt nonce="' + nonce + '">(function(){function rpt(){try{' +
     'var b=document.body,fr=document.querySelector("frameset>frame");' +
     'var empty=!fr;' +
     'if(b&&!fr){' +
@@ -1872,16 +1911,19 @@ function runPreview(){
   'document.addEventListener("DOMContentLoaded",rpt);' +
   'window.addEventListener("load",function(){rpt();setTimeout(rpt,600);});' +
   '})();</scr' + 'ipt>';
+  /* JavaScript is switched off in the preview (this is a HTML lesson): the
+     guard allows only the nonce'd probe.  A CSP <meta> must be a child of
+     <head> and ahead of anything the page wrote, so it goes right after the
+     doctype — browsers pull both into the implied head even when the page
+     has none, so no page markup is ever parsed before the policy is set. */
+  const guard = '<meta http-equiv="Content-Security-Policy" content="script-src \'nonce-' + nonce + '\'">';
   const doc = ta.value;
-  const headM = /(<head[^>]*>)/i.exec(doc);
-  const dtM = /<!doctype[^>]*>/i.exec(doc);
-  let out;
-  if (headM) out = doc.slice(0, headM.index + headM[1].length) + boot + doc.slice(headM.index + headM[1].length);
-  else if (dtM) out = doc.slice(0, dtM.index + dtM[0].length) + boot + doc.slice(dtM.index + dtM[0].length);
-  else out = boot + doc;
-  pv.srcdoc = out;
+  const dm = /^\s*<!doctype[^>]*>/i.exec(doc);
+  const first = dm ? dm[0] : '';
+  pv.srcdoc = first + guard + boot + doc.slice(first.length);
   pvNote.textContent = 'updates as you type';
   pvNote.classList.remove('stale');
+  pvNote.removeAttribute('data-stale');
 }
 window.addEventListener('message', e => {
   if (e.source === pv.contentWindow && e.data && e.data.source === 'htmldoctor')
@@ -2109,6 +2151,96 @@ EXAMPLES.table =
 `;
 
 /* ============================================================
+   SHARE LINKS — the page travels inside the link itself
+   (#html=<byte count>.<base64url>), so nothing is uploaded and
+   no server sees it.  It lives in the # part of the address:
+   GitHub Pages rejects query strings over ~8 KB (HTTP 414), but
+   never sees the # part.  base64 grows text by a third
+   (percent-encoding grows hand-written HTML by about 1.8x), so
+   16 KB of link carries 12,000 characters — the same figure as
+   the editor's size limit.
+   ============================================================ */
+function toBase64Url(bytes){
+  let bin = '';
+  for (let i = 0; i < bytes.length; i += 0x8000)
+    bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function fromBase64Url(s){
+  const b64 = s.replace(/-/g, '+').replace(/_/g, '/');
+  const bin = atob(b64 + '='.repeat((4 - b64.length % 4) % 4));
+  return Uint8Array.from(bin, ch => ch.charCodeAt(0));
+}
+function shareLink(html){
+  /* the byte count in front is what lets a link that was cut short be told apart from a whole one */
+  const bytes = utf8Bytes(html);
+  return location.href.split('#')[0].split('?')[0] + '#html=' + bytes.length + '.' + toBase64Url(bytes);
+}
+/* the size limit stays out of sight until a page can no longer be shared as a link */
+function renderLimit(){
+  const n = src.length;
+  let msg = '';
+  if (n > MAX_HTML_CHARS)
+    msg = n.toLocaleString() + ' characters — over the ' + MAX_HTML_CHARS.toLocaleString() + ' limit';
+  else if (shareLink(src).length > MAX_LINK_CHARS)
+    msg = n.toLocaleString() + ' characters — too long to share as a link (16 KB)';
+  limitNote.textContent = msg;
+  limitNote.hidden = !msg;
+  shareBtn.disabled = !!msg;
+  shareBtn.title = msg ? 'Over the limit — too long to share as a link'
+                       : 'Copy a link that opens this page in the editor';
+}
+function showLinkNotice(kind){
+  $('#link-note-text').textContent = kind === 'loaded'
+    ? 'This page came from a shared link — the preview shows HTML written by someone else. Never type passwords or personal details into it.'
+    : 'The shared link could not be read (it may have been cut short or changed), so it was ignored.';
+  linkNote.classList.toggle('err', kind !== 'loaded');
+  linkNote.hidden = false;
+}
+/* #html= leaves the address once the page has been saved, so reloading later
+   brings back the edited page instead of the link's original */
+function stripSharedParam(){
+  try{ history.replaceState(null, '', location.pathname + location.search); }catch{}
+}
+let fromSharedLink = false;      /* true while the editor holds a shared page that is not yet edited */
+
+let copiedTimer = null;
+shareBtn.addEventListener('click', () => {
+  const url = shareLink(ta.value);
+  const copied = () => {
+    shareBtn.textContent = '✓ Link copied';
+    clearTimeout(copiedTimer);
+    copiedTimer = setTimeout(() => { shareBtn.textContent = 'Share link'; }, 2000);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText)
+    navigator.clipboard.writeText(url).then(copied, () => window.prompt('Copy this link:', url));
+  else window.prompt('Copy this link:', url);
+});
+$('#link-note-close').addEventListener('click', () => { linkNote.hidden = true; });
+
+/* ============================================================
+   DEBUG / TEST HOOK — a stable in-page API for e2e tests and the
+   console.  Read-mostly: setCode is the only writer, and it
+   behaves exactly like typing (lint, preview and autosave react).
+   ============================================================ */
+window.htmlDoctor = {
+  version: '1.1.0',
+  setCode(html){
+    ta.value = String(html);
+    ta.dispatchEvent(new Event('input', { bubbles: true }));
+  },
+  getFindings(){
+    return errors.map(e => ({ sev: e.sev, code: e.code, title: e.title, line: e.line, col: e.col }));
+  },
+  shareLink(html){ return shareLink(html === undefined ? ta.value : html); },
+  previewState(){
+    return { stale: pvNote.hasAttribute('data-stale'),
+             blank: !$('#pv-empty').hidden,
+             fromSharedLink };
+  }
+};
+
+/* ============================================================
    BOOT
    ============================================================ */
 (function boot(){
@@ -2119,13 +2251,35 @@ EXAMPLES.table =
   if (params.get('example') && EXAMPLES[params.get('example')]){
     ta.value = EXAMPLES[params.get('example')];
   }
+  /* a shared link pre-fills the editor, ahead of the saved page and ?example= */
+  if (location.hash.startsWith('#html=')){
+    /* base64url is what Share link writes; ordinary base64 from other tools is accepted too */
+    const payload = location.hash.slice('#html='.length).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    try{
+      /* "<byte count>.<base64>": a count that doesn't match means the link was cut short */
+      const m = /^(\d{1,7})\.([A-Za-z0-9_-]*)$/.exec(payload);
+      if (!m || payload.length > MAX_LINK_CHARS) throw new Error('bad link');
+      const bytes = fromBase64Url(m[2]);
+      if (bytes.length !== Number(m[1])) throw new Error('bad link');
+      ta.value = new TextDecoder('utf-8', {fatal: true}).decode(bytes);
+      fromSharedLink = true;
+      showLinkNotice('loaded');
+    }catch{
+      stripSharedParam();
+      showLinkNotice('bad');
+    }
+  }
   let saveTimer = null;
   ta.addEventListener('input', () => {
     clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => { try{ localStorage.setItem('editor.code.v3', ta.value); }catch{} }, 800);
+    saveTimer = setTimeout(() => {
+      try{ localStorage.setItem('editor.code.v3', ta.value); }catch{}
+      if (fromSharedLink){ fromSharedLink = false; stripSharedParam(); }
+    }, 800);
   });
   update();
   runPreview();
+  document.documentElement.setAttribute('data-ready', '1');
 })();
 </script>
 </body>
