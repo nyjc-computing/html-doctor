@@ -254,8 +254,8 @@ dialog#help th{background:#f2f4f7}
       <li>Only the HTML is checked for now — CSS checking arrives in a separate lesson.</li>
       <li>Only HTML 4 elements are in scope (that's the course syllabus). HTML5-only tags such as
           <code>&lt;header&gt;</code> get a warning, not an error.</li>
-      <li>Elements whose closing tag HTML 4 lets you omit (<code>&lt;li&gt;</code>, <code>&lt;p&gt;</code>,
-          <code>&lt;td&gt;</code>…) are never flagged — but adding the closing tag makes the structure easier to see.</li>
+      <li>Close every tag you open — even the ones HTML 4 lets you omit (<code>&lt;li&gt;</code>, <code>&lt;p&gt;</code>,
+          <code>&lt;td&gt;</code>…). A missing closing tag is flagged as an error, never waved through.</li>
       <li>Your code is saved in this browser automatically.</li>
       <li><b>Share link</b> copies an address that opens the current page in the editor. The HTML travels
           inside the link itself — nothing is uploaded. Pages up to 12,000 characters fit; the character
@@ -877,17 +877,17 @@ function validateHtml(add){
           'HTML 4 says <' + name + '> belongs in <head>. The browser applies it anyway, but keep it in <head> to stay standard.',
           'Move it inside <head>.', [name, 'head']);
 
-    /* implicit closes: <li>a<li>b  /  <p>a<p>b  … (p is left to the
-       block-in-p warning instead — that phrasing teaches more) */
+    /* implicit closes: <li>a<li>b  /  <p>a<p>b  … — HTML 4 lets these end tags
+       be omitted, but the course insists on them, so each one is an error */
     while (stack.length){
       const top = stack[stack.length - 1];
       const closes = CLOSES_ON[top.name];
       if (!closes || !closes.includes(name)) break;
       if (top.name === 'p' && name !== 'p') break;   /* block-in-p warning handles this */
       stack.pop();
-      add('info', top.s, top.e, 'implicit-close', '<' + top.name + '> closed automatically',
-          'This <' + top.name + '> ends here because the next <' + name + '> started — HTML 4 lets you omit </' + top.name + '>.',
-          'Adding </' + top.name + '> makes the structure easier to read.', [top.name]);
+      add('err', top.s, top.e, 'missing-close', 'Missing </' + top.name + '>',
+          'This <' + top.name + '> ends here because the next <' + name + '> started. HTML 4 lets you omit </' + top.name + '>, but in this course every tag you open should be closed.',
+          'Add </' + top.name + '> before the next <' + name + '>.', [top.name]);
     }
 
     /* hierarchy: parent constraints */
@@ -927,7 +927,10 @@ function validateHtml(add){
       stack.push({name, s:tag.s, e:tag.e, nameS:tag.nameS, nameE:tag.nameE});
     }
 
-    checkAttrs(tag, styleDecls);
+    /* attributes of an unknown tag can't be meaningfully checked — the tag
+       itself is the error, and there is no element definition to check
+       against (HTML5 tags are still checked against the default globals) */
+    if (ELEMENTS[name] !== undefined || HTML5_TAGS.has(name)) checkAttrs(tag, styleDecls);
   }
 
   function onCloseTag(tag){
@@ -938,7 +941,7 @@ function validateHtml(add){
           'Delete </' + name + '>.', [name]);
       return;
     }
-    if (UNIQUE.has(name) && name !== 'html' && !stack.some(e => e.name === name) && !OPT_END.has(name)){
+    if (UNIQUE.has(name) && name !== 'html' && !stack.some(e => e.name === name)){
       add('err', tag.s, tag.e, 'stray-close', '</' + name + '> has no matching opening tag',
           'There is no open <' + name + '> to close.',
           'Delete </' + name + '>, or add the opening tag.', [name]);
@@ -952,16 +955,19 @@ function validateHtml(add){
           'Delete </' + name + '> or move it inside the element it should close.', [name]);
       return;
     }
-    /* anything still open above idx is either implicitly closed (optional
-       end tag) or wrongly nested / never closed */
+    /* anything still open above idx was never closed (its end tag is
+       optional in HTML 4, but the course insists on it) or is wrongly
+       nested / crosses the closing tag */
     const inner = stack.slice(idx + 1);
     for (const e of inner){
       if (e.reported) continue;        /* already reported via raw-unterm */
-      if (OPT_END.has(e.name)) continue;   /* closed with its parent — normal HTML 4 */
+      const optional = OPT_END.has(e.name);
       add('err', e.s, e.e, 'missing-close', 'Missing </' + e.name + '>',
-          'The <' + e.name + '> opened here is still open when </' + name + '> closes <' + name + '> — the tags intersect. Everything you meant to have inside <' + e.name + '> ends early.',
+          optional
+            ? 'The <' + e.name + '> opened here is still open when </' + name + '> closes <' + name + '>. HTML 4 lets you omit </' + e.name + '>, but every tag you open should be closed.'
+            : 'The <' + e.name + '> opened here is still open when </' + name + '> closes <' + name + '> — the tags intersect. Everything you meant to have inside <' + e.name + '> ends early.',
             'Add </' + e.name + '> before </' + name + '>.', [e.name, name]);
-      add('err', tag.s, tag.e, 'bad-nesting', '</' + name + '> crosses an open tag',
+      if (!optional) add('err', tag.s, tag.e, 'bad-nesting', '</' + name + '> crosses an open tag',
           'This closes <' + name + '>, but <' + e.name + '> (opened at line ' + lineCol(e.s).line + ') opened after it and is still open. Tags must close in reverse order, like nested boxes.',
             'Move </' + e.name + '> to before </' + name + '>.', [name, e.name]);
     }
@@ -1022,7 +1028,7 @@ function validateHtml(add){
 
   /* ---- end of document ---- */
   for (const e of stack){
-    if (!OPT_END.has(e.name) && !e.reported)
+    if (!e.reported)
       add('err', e.s, e.e, 'unclosed-eof', 'Missing </' + e.name + '>',
           'The <' + e.name + '> opened here is never closed — the file ends first. Everything after it is treated as its content.',
           'Add </' + e.name + '> where the element should end.', [e.name]);
@@ -2058,9 +2064,10 @@ EXAMPLES.starter =
 `;
 EXAMPLES.broken =
 `<!doctype html>
-<html>
+<html lang="en">
 <head>
-  <title>Nyla Yang — JC2 Portfolio
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <title>Nyla Yang — JC2 Portfolio</title>
   <style>
     h1 { color: teal; }
     p { margin: 10px; }
@@ -2069,42 +2076,58 @@ EXAMPLES.broken =
   </style>
 </head>
 <body>
+
   <h1>Nyla Yang — JC2 Portfolio</h1>
-  <p>Hi! I am a JC2 student who loves <b>computing<i> and </b>robotics</i>.
-  <p>My CCA & achievements are listed below.
-  <div>Projects & contact details
 
-  <h2>My subjects</h2>
-  <table border="1">
-    <td>H2 Computing</td>
-    <tr><td>H2 Mathematics</td>
-  </table>
+  <div>
+    <p>Hi! I am a JC2 student who loves <b>computing<i> and </b>robotics</i>.
+    <p>My CCA & achievements are listed below.</p>
+  </div>
 
-  <img scr="robot.jpg" align="centre" alt="My robotics team photo>
-  <br>
-  </br>
-  <seciton>Featured projects</seciton>
-  <ul>
-    <li>Line-following robot
-    <li>Class timetable web app
-  </ul>
-  </ul>
-  <div href="#contact">Contact details are at the bottom</div>
+  <div>
+    <h2>My subjects</h2>
+    <table border="1">
+      <tr>
+        <th>Subject</th>
+        <th>Grade</th>
+      </tr>
+      <tr>
+        <td>H2 Computing</td>
+        <td>A</td>
+      </tr>
+      <tr>
+        <td>H2 Mathematics</td>
+        <td>B</td>
+      </tr>
+    </table>
+  </div>
 
-  <body>
+  <div>
+    <h2>Featured projects</h2>
+    <img src="robot.jpg" alt="My robotics team photo>
+    <ul>
+      <li>Line-following robot</li>
+      <li>Class timetable web app</li>
+    </ul>
+    <imag src="timetable-app.png" alt="The timetable app running in a browser"></imag>
+  </div>
+
+  <div>
     <h2>Contact me</h2>
     <form action="mailto:nyla@example.com">
-      <p>Email: <input type="text" name="email"></p>
-      <form action="/robotics-club">
-        <p>Robotics club mailing list: <input type="text" name="club"></p>
-      </form>
+      <p><label for="email">Email:</label> <input type="text" id="email" name="email"></p>
+      <p><label for="club">Robotics club mailing list:</label> <input type="text" id="club" name="club"></p>
       <p><input type="submit" value="Send"></p>
     </form>
-  </body>
+    <p>Contact details are at the bottom.</p>
+  </div>
 
-  <footer>&copy; 2026 Nyla Yang</footer>
+  <div>
+    <p>&copy; 2026 Nyla Yang</p>
+  </div>
+
 </html>
-<!-- TODO: add more projects
+<!-- TODO: add a timetable page and link it here
 `;
 EXAMPLES.table =
 `<!doctype html>
