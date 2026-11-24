@@ -2067,6 +2067,8 @@ EXAMPLES.broken =
 <html lang="en">
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <!-- a real page links its stylesheet with <link>; this single-file demo keeps the CSS below -->
+  <link rel="stylesheet" href="style.css">
   <title>Nyla Yang — JC2 Portfolio</title>
   <style>
     h1 { color: teal; }
@@ -2077,7 +2079,7 @@ EXAMPLES.broken =
 </head>
 <body>
 
-  <h1>Nyla Yang — JC2 Portfolio</h1>
+  <h1 id="top">Nyla Yang — JC2 Portfolio</h1>
 
   <div>
     <p>Hi! I am a JC2 student who loves <b class="highlight">computing<i> and </b>robotics</i>.
@@ -2109,6 +2111,7 @@ EXAMPLES.broken =
       <li>Line-following robot</li>
       <li>Class timetable web app</li>
     </ul>
+    <h3>Timetable app</h3>
     <imag src="timetable-app.png" alt="The timetable app running in a browser"></imag>
   </div>
 
@@ -2117,13 +2120,19 @@ EXAMPLES.broken =
     <form action="mailto:nyla@example.com">
       <p><label for="email">Email:</label> <input type="text" id="email" name="email"></p>
       <p><label for="club">Robotics club mailing list:</label> <input type="text" id="club" name="club"></p>
+      <p><label for="msg">Questions or feedback:</label><br>
+         <textarea id="msg" name="msg" rows="4" cols="40"></textarea></p>
       <p><input type="submit" value="Send"></p>
     </form>
-    <p>Contact details are at the bottom.</p>
+    <p>Write to me: <a href="mailto:nyla@example.com">nyla@example.com</a></p>
   </div>
 
+  <hr>
+
   <div>
-    <p>&copy; 2026 Nyla Yang</p>
+    <p><span style="color: gray">Think big, start small, debug often.</span></p>
+    <p>&copy; 2026 Nyla Yang. Hand-coded, &lt;angle brackets&gt; and all.</p>
+    <p><a href="#top">Back to top</a></p>
   </div>
 
 </html>
