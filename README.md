@@ -33,6 +33,15 @@ it (GitHub Pages rejects query strings over about 8 KB). base64 grows text by a
 third, so pages up to **12,000 characters** fit in a 16 KB link; the character
 count appears in the editor's title bar only once a page is over that limit.
 
+**Classroom embedding:** the app is a single file, so it can be published to
+the campus-classroom app host and embedded in a document question. Verified
+against the campus-apphost contract: the injected export runtime lands after
+the app's own script (the file's last `</body>` is the real one), share links
+keep pointing at this site (the embed URL is token-gated and expires), drafts
+are namespaced per question, and an export request swaps the student's HTML
+into the snapshot so a submission contains the code, not a picture of the
+editor.
+
 The preview is a **sandboxed `<iframe>`** (no `allow-same-origin`, no
 `allow-modals`) in which **JavaScript is switched off**. Each render injects a
 content security policy with a fresh random nonce that allows only the Doctor's

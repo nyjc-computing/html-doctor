@@ -65,6 +65,12 @@ main{flex:1;display:flex;min-height:0;min-width:0}
 #link-note button:hover{background:rgba(0,0,0,.07)}
 #link-note[hidden]{display:none}
 
+dialog#share-dialog{width:min(560px,92vw);border:1px solid var(--line);border-radius:10px;
+  padding:14px 16px;font-size:13.5px;box-shadow:0 12px 30px rgba(17,24,39,.25)}
+dialog#share-dialog::backdrop{background:rgba(17,24,39,.45)}
+#share-dialog-url{width:100%;margin-top:6px;font:12.5px var(--mono)}
+dialog#share-dialog .dlg-foot{text-align:right;margin-top:12px}
+
 #editor{flex:1;display:flex;min-height:0;position:relative}
 #gutter{flex:0 0 52px;position:relative;overflow:hidden;background:#fafbfc;
   border-right:1px solid var(--line);user-select:none;cursor:pointer}
@@ -177,6 +183,14 @@ dialog#help th{background:#f2f4f7}
   <span id="link-note-text"></span>
   <button id="link-note-close" title="Dismiss" aria-label="Dismiss this notice">×</button>
 </div>
+
+<dialog id="share-dialog">
+  <div class="dlg-body">
+    <p>Copy this link — it opens this page in the editor:</p>
+    <input id="share-dialog-url" readonly spellcheck="false" aria-label="Share link">
+  </div>
+  <div class="dlg-foot"><button id="share-dialog-close">Close</button></div>
+</dialog>
 
 <main>
   <section id="editor-pane">
@@ -575,6 +589,8 @@ const detailEl = $('#err-detail'), posEl = $('#pos'), hintEl = $('#hint');
 const shareBtn = $('#share-btn'), limitNote = $('#limit-note'), linkNote = $('#link-note');
 const MAX_HTML_CHARS = 12000;     /* longest page that fits a share link — and the editor's size limit */
 const MAX_LINK_CHARS  = 16384;    /* 16 KB */
+/* served from the campus-classroom app host at /apps/embed/<assignment>/<question> */
+const EMBEDDED = location.pathname.startsWith('/apps/embed/');
 const LH = 22, PADT = 8, PADL = 12;
 let src = '', lines = [0];
 let tokens = [], tags = [], raws = [];
@@ -2206,7 +2222,11 @@ function fromBase64Url(s){
 function shareLink(html){
   /* the byte count in front is what lets a link that was cut short be told apart from a whole one */
   const bytes = utf8Bytes(html);
-  return location.href.split('#')[0].split('?')[0] + '#html=' + bytes.length + '.' + toBase64Url(bytes);
+  /* in a classroom embed the served address is token-gated (and expires),
+     so the link points at the canonical site — the page travels in the # */
+  const base = EMBEDDED ? 'https://nyjc-computing.github.io/html-doctor/'
+                        : location.href.split('#')[0].split('?')[0];
+  return base + '#html=' + bytes.length + '.' + toBase64Url(bytes);
 }
 /* the size limit stays out of sight until a page can no longer be shared as a link */
 function renderLimit(){
@@ -2245,9 +2265,18 @@ shareBtn.addEventListener('click', () => {
     copiedTimer = setTimeout(() => { shareBtn.textContent = 'Share link'; }, 2000);
   };
   if (navigator.clipboard && navigator.clipboard.writeText)
-    navigator.clipboard.writeText(url).then(copied, () => window.prompt('Copy this link:', url));
-  else window.prompt('Copy this link:', url);
+    navigator.clipboard.writeText(url).then(copied, () => showShareDialog(url));
+  else showShareDialog(url);
 });
+function showShareDialog(url){
+  /* the clipboard can be denied (sandboxed classroom embeds do this) and
+     window.prompt is blocked without allow-modals — a dialog is not */
+  const input = $('#share-dialog-url');
+  input.value = url;
+  $('#share-dialog').showModal();
+  input.select();
+}
+$('#share-dialog-close').addEventListener('click', () => $('#share-dialog').close());
 $('#link-note-close').addEventListener('click', () => { linkNote.hidden = true; });
 
 /* ============================================================
@@ -2273,11 +2302,42 @@ window.htmlDoctor = {
 };
 
 /* ============================================================
+   CAMPUS CLASSROOM EMBED — the app host injects an export runtime
+   that snapshots this DOM as the student's submission.  Our listener
+   is registered first (it sits in the app script; the runtime loads
+   after it), so we answer first with the thing a submission should
+   contain — the HTML the student wrote — and the answer sheet stops
+   listening on the first reply.  The runtime's own UI-shaped reply
+   arrives later and is ignored.
+   ============================================================ */
+if (EMBEDDED){
+  window.addEventListener('message', e => {
+    const d = e.data || {};
+    if (d.action !== 'campus-export' || !d.nonce) return;
+    const cfg = window.CAMPUS_EMBED || {};
+    const reply = {
+      action: 'campus-exported',
+      qid: cfg.qid,
+      html: '<!DOCTYPE html>\n<html>\n<head>\n'
+        + '<meta name="campus-export-nonce" content="' + escH(String(d.nonce)) + '">\n'
+        + '<title>HTML Doctor submission</title>\n'
+        + '</head>\n<body>\n<pre>' + escH(ta.value) + '</pre>\n</body>\n</html>\n'
+    };
+    e.source.postMessage(reply, cfg.parentOrigin || '*');
+  });
+}
+
+/* ============================================================
    BOOT
    ============================================================ */
 (function boot(){
+  /* one draft per page; per question when embedded, so two assignments
+     never bleed into each other */
+  const storeKey = EMBEDDED
+    ? 'editor.code.v3.embed.' + location.pathname.split('/').slice(3).join('.')
+    : 'editor.code.v3';
   let initial = null;
-  try{ initial = localStorage.getItem('editor.code.v3'); }catch{}
+  try{ initial = localStorage.getItem(storeKey); }catch{}
   ta.value = initial !== null && initial !== '' ? initial : EXAMPLES.broken;
   const params = new URLSearchParams(location.search);
   if (params.get('example') && EXAMPLES[params.get('example')]){
@@ -2305,7 +2365,7 @@ window.htmlDoctor = {
   ta.addEventListener('input', () => {
     clearTimeout(saveTimer);
     saveTimer = setTimeout(() => {
-      try{ localStorage.setItem('editor.code.v3', ta.value); }catch{}
+      try{ localStorage.setItem(storeKey, ta.value); }catch{}
       if (fromSharedLink){ fromSharedLink = false; stripSharedParam(); }
     }, 800);
   });
