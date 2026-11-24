@@ -886,7 +886,7 @@ function validateHtml(add){
       if (top.name === 'p' && name !== 'p') break;   /* block-in-p warning handles this */
       stack.pop();
       add('err', top.s, top.e, 'missing-close', 'Missing </' + top.name + '>',
-          'This <' + top.name + '> ends here because the next <' + name + '> started. HTML 4 lets you omit </' + top.name + '>, but in this course every tag you open should be closed.',
+          'This <' + top.name + '> is missing a closing tag before the next <' + name + '>.',
           'Add </' + top.name + '> before the next <' + name + '>.', [top.name]);
     }
 
@@ -964,7 +964,7 @@ function validateHtml(add){
       const optional = OPT_END.has(e.name);
       add('err', e.s, e.e, 'missing-close', 'Missing </' + e.name + '>',
           optional
-            ? 'The <' + e.name + '> opened here is still open when </' + name + '> closes <' + name + '>. HTML 4 lets you omit </' + e.name + '>, but every tag you open should be closed.'
+            ? 'This <' + e.name + '> is missing a closing tag before </' + name + '>.'
             : 'The <' + e.name + '> opened here is still open when </' + name + '> closes <' + name + '> — the tags intersect. Everything you meant to have inside <' + e.name + '> ends early.',
             'Add </' + e.name + '> before </' + name + '>.', [e.name, name]);
       if (!optional) add('err', tag.s, tag.e, 'bad-nesting', '</' + name + '> crosses an open tag',
@@ -2262,7 +2262,7 @@ window.htmlDoctor = {
     ta.dispatchEvent(new Event('input', { bubbles: true }));
   },
   getFindings(){
-    return errors.map(e => ({ sev: e.sev, code: e.code, title: e.title, line: e.line, col: e.col }));
+    return errors.map(e => ({ sev: e.sev, code: e.code, title: e.title, msg: e.msg, fix: e.fix, line: e.line, col: e.col }));
   },
   shareLink(html){ return shareLink(html === undefined ? ta.value : html); },
   previewState(){
